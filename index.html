@@ -113,6 +113,36 @@
       var localTimeEl = document.getElementById('localTime');
       var weatherEl = document.getElementById('weather');
 
+      var audioCtx = null;
+      function getAudioCtx() {
+        if (audioCtx) return audioCtx;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx;
+      }
+      function playBeep(frequency, durationMs, type) {
+        try {
+          var ctx = getAudioCtx();
+          if (ctx.state === 'suspended') ctx.resume();
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = frequency;
+          osc.type = type || 'sine';
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + durationMs / 1000);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + durationMs / 1000);
+        } catch (e) {}
+      }
+      function playSessionEndSound() {
+        playBeep(880, 200, 'sine');
+        setTimeout(function () { playBeep(880, 200, 'sine'); }, 250);
+      }
+      function playBreakEndSound() {
+        playBeep(660, 400, 'sine');
+      }
+
       var DEFAULT_LAT = -6.2088;
       var DEFAULT_LON = 106.8456;
       var weatherRefreshMs = 10 * 60 * 1000;
@@ -194,9 +224,11 @@
 
         if (elapsed >= duration) {
           if (mode === 'study') {
+            playSessionEndSound();
             sessionCount++;
             mode = 'break';
           } else {
+            playBreakEndSound();
             mode = 'study';
           }
           phaseStartTime = Date.now();
